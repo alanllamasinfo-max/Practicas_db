@@ -23,3 +23,28 @@ FROM pg_stat_statements
 ORDER BY total_exec_time DESC 
 LIMIT 10;
 
+---otra opcion por si queremos evitar los procesos del dbeaver o de pgadmin
+SELECT 
+    query AS "Consulta SQL", 
+    calls AS "Veces ejecutada", 
+    round((total_exec_time / 1000 / 60)::numeric, 2) AS "Minutos consumidos", 
+    round((100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0))::numeric, 2) AS "Acierto en Caché (%)"
+FROM pg_stat_statements 
+WHERE 
+    -- 1. Excluimos las consultas del sistema y herramientas de administración
+    query NOT ILIKE '%pg_catalog%' 
+    AND query NOT ILIKE '%information_schema%'
+    AND query NOT ILIKE '%pg_stat%'
+    -- 2. INCLUIMOS solo las consultas que toquen las tablas de HammerDB (TPC-C)
+    AND query ILIKE ANY (array[
+        '%customer%', 
+        '%orders%', 
+        '%stock%', 
+        '%warehouse%', 
+        '%district%', 
+        '%item%', 
+        '%new_orders%'
+    ])
+ORDER BY total_exec_time DESC 
+LIMIT 15;
+
