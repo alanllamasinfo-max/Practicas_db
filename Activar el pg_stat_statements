@@ -1,1 +1,25 @@
+# 0.- Instalar la extension de contrib donde viene la herramienta de pg_stat
+sudo dnf install postgresql17-contrib -y
+
+# 1.- 
+Entra como postgres: su - postgres
+Edita la configuración: vi /var/lib/pgsql/17/data/postgresql.conf
+Busca la línea shared_preload_libraries, quítale el # y déjala exactamente así:
+shared_preload_libraries = 'pg_stat_statements'
+
+# 2.- Guarda el archivo y reinicia el motor:
+/usr/pgsql-17/bin/pg_ctl -D /var/lib/pgsql/17/data restart
+
+# 3.- Nos conectamos a psql y creamos la extension
+CREATE EXTENSION pg_stat_statements;
+
+# 4.- Lanzamos esta query para detectar cuellos de botella
+SELECT 
+    query AS "Consulta SQL", 
+    calls AS "Veces ejecutada", 
+    round((total_exec_time / 1000 / 60)::numeric, 2) AS "Minutos consumidos", 
+    round((100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0))::numeric, 2) AS "Acierto en Caché (%)"
+FROM pg_stat_statements 
+ORDER BY total_exec_time DESC 
+LIMIT 10;
 
